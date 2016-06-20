@@ -1,14 +1,15 @@
 var request = require('request');
 var cheerio = require('cheerio');
 var fs = require('fs');
+var csv = require('fast-csv');
+
 //var http = require('http');
 var caminhoSimulado = './Simulados/simENEM2012CienciasHumanas.html';
 
-var questao;
-var pergunta;
+var questao = [];
+var pergunta = [];
 var urlImagem;
 var respostaCorreta;
-var count = 0;
 var respostas = [];
 var corretas = [];
 
@@ -23,10 +24,11 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
         var mainLoop = $(this);
 
         //PEGA O NÚMERO DA QUESTÃO
-        questao = i + 1; 
+        var questaoSoma = i + 1;
+        questao.push(questaoSoma); 
 
         //PEGA SOMENTE A PERGUNTA
-        pergunta = mainLoop.children().children().children().parent().next('.span11').text();
+        pergunta.push(mainLoop.children().children().children().parent().next('.span11').text());
 
         //PEGAS TODAS AS ALTERNATIVAS POR PERGUNTA
         respostas.push(mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text());
@@ -49,20 +51,31 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
                     //PEGA SOMENTE A RESPOSTA CORRETA
                     respostaCorreta = somenteRespCorreta.next().text();        
                 }*/
+       
+    });
 
-        var metadata = {
+
+
+var ws = fs.createWriteStream('aprende.csv');
+
+/*for (var index = 0; index < questao.length; index++) {
+    console.log(questao[index]);
+}*/
+
+csv.write([
+    questao,
+    pergunta
+], {headers:true})
+.pipe(ws);
+
+/*var metadata = {
             questao: questao,
             pergunta: pergunta,
-            //respA: respostaA,
-            //respB: respostaB,
-            //respC: respostaC,
-            //respD: respostaD,
-            //respE: respostaE,
-            respCorreta: respostaCorreta
+            urlImagem: urlImagem
         };
 
-        //console.log(metadata);
-    })
+        console.log(metadata); */
+
 //console.log(respostas[0]);
 //console.log(corretas[0][0].prev.next.next.text);
 //var resp = [];
