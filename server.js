@@ -1,21 +1,36 @@
 var request = require('request');
 var cheerio = require('cheerio');
+var path = require('path');
 var fs = require('fs');
-var csv = require('fast-csv');
+//var csv = require('fast-csv');
+var Connection = require('tedious').Connection;
+var Request = require('tedious').Request;
+var TYPES = require('tedious').TYPES;
+
+var config = {
+  userName: 'aprende',
+  password: 'Tutto123!',
+  server: 'aprendesrv.database.windows.net',
+  options: {encrypt: true, database: 'aprendedb'}
+};
 
 //var http = require('http');
 var caminhoSimulado = './Simulados/simENEM2012CienciasHumanas.html';
 
 var questao = [];
 var pergunta = [];
-var urlImagem;
+var urlImagem = [];
 var respostaCorreta;
 var respostas = [];
 var corretas = [];
+var nomeArquivo;
 
 fs.readFile(caminhoSimulado,'utf8', (err, data) => {
-    if (err) {        console.log(err);    }
+    if (err) {        console.log(err);    }  
     
+    var fileName = path.basename(caminhoSimulado);
+    nomeArquivo = fileName;
+   
     //FAZ A LEITURA DO DOCUMENTO
     var $ = cheerio.load(data);
 
@@ -36,12 +51,12 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
         //PEGA AS URL´s DAS IMAGENS POR PERGUNTA
         var isUrl = mainLoop.children().children().children().parent().next('.span11').children().children().attr('src');
 
-        if(isUrl != null){urlImagem = isUrl}
+        urlImagem.push(isUrl);
 
         //PEGA TODAS AS RESPOSTAS CORRETAS POR PERGUNTA
-        var isChecked = mainLoop.children().children().children().parent().next('.span12').children().next().children().children();
+        //var isChecked = mainLoop.children().children().children().parent().next('.span12').children().next().children().children();
 
-        corretas.push(isChecked);
+        //corretas.push(isChecked);
 
         //corretas.push(isChecked.text());
 
@@ -53,65 +68,70 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
                 }*/
        
     });
-
-
-
-var ws = fs.createWriteStream('aprende.csv');
-
-/*for (var index = 0; index < questao.length; index++) {
-    console.log(questao[index]);
-}*/
-
-csv.write([
-    questao,
-    pergunta
-], {headers:true})
-.pipe(ws);
-
-/*var metadata = {
-            questao: questao,
-            pergunta: pergunta,
-            urlImagem: urlImagem
-        };
-
-        console.log(metadata); */
-
-//console.log(respostas[0]);
-//console.log(corretas[0][0].prev.next.next.text);
-//var resp = [];
-
-/*for (var i = 0; i < corretas.length; i++) {
-    //var geral = corretas[i];
     
-    for (var j = 0; j < corretas[i].length; j++) {
-        //var espec = array[j];
-        
-        resp.push()
+    //var t = respostas[30];
+    
+    
+    
+    //console.log(respostas[30].split(".")[4]+".");
+    
+    var con = new Connection(config);
+    con.on('connect', function(err){
+        console.log("Conectou");
+        //executeInsertTipoSimulado();
+        //executeInsertResposta()
+        //executeInsertSimulado();
+       });
 
-        if(espec.attr('checked')){
-            console.log(espec.text());
+    function executeInsertTipoSimulado() {
+        request = new Request("INSERT [dbo].[TipoSimulado] ([Descricao], [DataCriacao]) VALUES (@Descricao, CURRENT_TIMESTAMP);", function(err){
+        if (err) {
+            console.log(err);
         }
-    }
-}*/
+        });
+        
+        request.addParameter('Descricao', TYPES.NVarChar, nomeArquivo);
+    
+    con.execSql(request);
+}
 
-//console.log(t);
+    function executeInsertResposta() {
+        for (var i = 0; i < respostas.length + 1; i++) {
+                request = new Request("INSERT [dbo].[Resposta] ([Resposta1], [Resposta2],[Resposta3],[Resposta4],[Resposta5],[RespostaCorreta],[DataCriacao]) VALUES (@Resp1,@Resp2,@Resp3,@Resp4,@Resp5,@RespCorreta, CURRENT_TIMESTAMP);", function(err){
+                if (err) {
+                    console.log(err);
+                }
+                });
+                //console.log(respostas[i].split(".")[0] + ".");
+                request.addParameter('Resp1', TYPES.NVarChar, respostas[i].split(".")[0] + ".");
+                request.addParameter('Resp2', TYPES.NVarChar, respostas[i].split(".")[1] + ".");
+                request.addParameter('Resp3', TYPES.NVarChar, respostas[i].split(".")[2] + ".");
+                request.addParameter('Resp4', TYPES.NVarChar, respostas[i].split(".")[3] + ".");
+                request.addParameter('Resp5', TYPES.NVarChar, respostas[i].split(".")[4] + ".");
+                request.addParameter('RespCorreta', TYPES.NVarChar, respostas[i].split(".")[0] + ".");   
+        }
+    
+    con.execSql(request);
+}
 
+    function executeInsertSimulado() {
+        for (var i = 0; i < respostas.length + 1; i++) {
+                request = new Request("INSERT [dbo].[Simulado] ([Questao], [Pergunta],[UrlImagem],[RespostaId],[TipoSimuladoId],[DataCriacao]) VALUES (@Questao,@Pergunta,@UrlImg,@RespId,@TipoSimuladoId, CURRENT_TIMESTAMP);", function(err){
+                if (err) {
+                    console.log(err);
+                }
+                });
+                
+                request.addParameter('Questao', TYPES.NVarChar, questao[i]);
+                request.addParameter('Pergunta', TYPES.NVarChar, pergunta[i]);
+                request.addParameter('UrlImg', TYPES.NVarChar, urlImagem[i] == "undefined" ? null : urlImagem[i]);
+                request.addParameter('RespId', TYPES.NVarChar, ;
+                request.addParameter('TipoSimuladoId', TYPES.NVarChar, ;
+        }
+    
+    con.execSql(request);
+}
+
+    
 });
-/*request(url, function (error, response, body) {
-  if (!error) {
-    var $ = cheerio.load(body);
-    questao = $('div').attr('class', 'span1').html();  
-      
-      
-    console.log("Questão " + questao);
-  } else {
-    console.log("We’ve encountered an error: " + error);
-  }
-});*/
 
-/*http.createServer(function (req, res) {
-    
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('Hello, world!');
-    
-}).listen(process.env.PORT || 8080); */
