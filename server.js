@@ -6,6 +6,7 @@ var fs = require('fs');
 var Connection = require('tedious').Connection;
 var Request = require('tedious').Request;
 var TYPES = require('tedious').TYPES;
+var ConnectionPool = require('tedious-connection-pool');
 
 var config = {
   userName: 'aprende',
@@ -14,19 +15,31 @@ var config = {
   options: {encrypt: true, database: 'aprendedb'}
 };
 
-//var http = require('http');
-var caminhoSimulado = './Simulados/simENEM2012CienciasHumanas.html';
+var poolConfig = {
+    min: 1,
+    max:3,
+    log:true
+};
 
-var questao = [];
-var pergunta = [];
-var urlImagem = [];
-var respostaCorreta;
-var respostas = [];
+var pool = new ConnectionPool(poolConfig, config);
+
+//var http = require('http');
+var caminhoSimulado = './Simulados/simulado2.html';
+
+var questao = "";
+var perguntas = "";
+var urlImagem = "";
+var respostaCorreta = "";
+var respostasA = "";
+var respostasB = "";
+var respostasC = "";
+var respostasD = "";
+var respostasE = "";
 var corretas = [];
 var nomeArquivo;
 
 fs.readFile(caminhoSimulado,'utf8', (err, data) => {
-    if (err) {        console.log(err);    }  
+    if (err) {        console.error(err);    }  
     
     var fileName = path.basename(caminhoSimulado);
     nomeArquivo = fileName;
@@ -40,18 +53,34 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
 
         //PEGA O NÚMERO DA QUESTÃO
         var questaoSoma = i + 1;
-        questao.push(questaoSoma); 
+        questao = questao + questaoSoma + "|"; 
 
         //PEGA SOMENTE A PERGUNTA
-        pergunta.push(mainLoop.children().children().children().parent().next('.span11').text());
+        var perg = mainLoop.children().children().children().parent().next('.span11').text() + "|";
+        perguntas = perguntas + perg;
+
+        var A = mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text().split(".")[0] + "." + "|";
+        respostasA = respostasA + A;
+
+        var B = mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text().split(".")[1] + "." + "|";
+        respostasB = respostasB + B;
+
+        var C = mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text().split(".")[2] + "." + "|";
+        respostasC = respostasC + C;
+
+        var D = mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text().split(".")[3] + "." + "|";
+        respostasD = respostasD + D;
+
+        var E = mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text().split(".")[4] + "." + "|";
+        respostasE = respostasE + E;
 
         //PEGAS TODAS AS ALTERNATIVAS POR PERGUNTA
-        respostas.push(mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text());
+        //respostas.push(mainLoop.children().children().children().parent().next().next().children().next().children().children('small').text());
 
         //PEGA AS URL´s DAS IMAGENS POR PERGUNTA
-        var isUrl = mainLoop.children().children().children().parent().next('.span11').children().children().attr('src');
+        var isUrl = mainLoop.children().children().children().parent().next('.span11').children().children().attr('src') + "|";
 
-        urlImagem.push(isUrl);
+        urlImagem = urlImagem + isUrl;
 
         //PEGA TODAS AS RESPOSTAS CORRETAS POR PERGUNTA
         //var isChecked = mainLoop.children().children().children().parent().next('.span12').children().next().children().children();
@@ -69,69 +98,40 @@ fs.readFile(caminhoSimulado,'utf8', (err, data) => {
        
     });
     
-    //var t = respostas[30];
-    
-    
-    
-    //console.log(respostas[30].split(".")[4]+".");
-    
-    var con = new Connection(config);
-    con.on('connect', function(err){
-        console.log("Conectou");
-        //executeInsertTipoSimulado();
-        //executeInsertResposta()
-        //executeInsertSimulado();
-       });
-
-    function executeInsertTipoSimulado() {
-        request = new Request("INSERT [dbo].[TipoSimulado] ([Descricao], [DataCriacao]) VALUES (@Descricao, CURRENT_TIMESTAMP);", function(err){
-        if (err) {
-            console.log(err);
-        }
-        });
-        
-        request.addParameter('Descricao', TYPES.NVarChar, nomeArquivo);
-    
-    con.execSql(request);
-}
-
-    function executeInsertResposta() {
-        for (var i = 0; i < respostas.length + 1; i++) {
-                request = new Request("INSERT [dbo].[Resposta] ([Resposta1], [Resposta2],[Resposta3],[Resposta4],[Resposta5],[RespostaCorreta],[DataCriacao]) VALUES (@Resp1,@Resp2,@Resp3,@Resp4,@Resp5,@RespCorreta, CURRENT_TIMESTAMP);", function(err){
+            pool.acquire(function (err, Connection){
                 if (err) {
-                    console.log(err);
+                    console.error(err);
                 }
-                });
-                //console.log(respostas[i].split(".")[0] + ".");
-                request.addParameter('Resp1', TYPES.NVarChar, respostas[i].split(".")[0] + ".");
-                request.addParameter('Resp2', TYPES.NVarChar, respostas[i].split(".")[1] + ".");
-                request.addParameter('Resp3', TYPES.NVarChar, respostas[i].split(".")[2] + ".");
-                request.addParameter('Resp4', TYPES.NVarChar, respostas[i].split(".")[3] + ".");
-                request.addParameter('Resp5', TYPES.NVarChar, respostas[i].split(".")[4] + ".");
-                request.addParameter('RespCorreta', TYPES.NVarChar, respostas[i].split(".")[0] + ".");   
-        }
-    
-    con.execSql(request);
-}
 
-    function executeInsertSimulado() {
-        for (var i = 0; i < respostas.length + 1; i++) {
-                request = new Request("INSERT [dbo].[Simulado] ([Questao], [Pergunta],[UrlImagem],[RespostaId],[TipoSimuladoId],[DataCriacao]) VALUES (@Questao,@Pergunta,@UrlImg,@RespId,@TipoSimuladoId, CURRENT_TIMESTAMP);", function(err){
-                if (err) {
-                    console.log(err);
-                }
+                var request = new Request("INSERT [dbo].[SimuladoAprende] ([NomeSimulado], [RespostaA],[RespostaB],[RespostaC],[RespostaD],[RespostaE],[RespostaCorreta],[Questao],[Pergunta],[UrlImagem],[DataCriacao]) VALUES (@NmSimulado,@RespA,@RespB,@RespC,@RespD,@RespE, @RespCorreta,@Questao,@Pergunta,@Url, CURRENT_TIMESTAMP);", function(err, rowCount){
+                    if (err) {
+                        console.log(err);
+                    }
+
+                    console.log('rowCount' + rowCount);
+                    Connection.release();
                 });
                 
-                request.addParameter('Questao', TYPES.NVarChar, questao[i]);
-                request.addParameter('Pergunta', TYPES.NVarChar, pergunta[i]);
-                request.addParameter('UrlImg', TYPES.NVarChar, urlImagem[i] == "undefined" ? null : urlImagem[i]);
-                request.addParameter('RespId', TYPES.NVarChar, ;
-                request.addParameter('TipoSimuladoId', TYPES.NVarChar, ;
-        }
-    
-    con.execSql(request);
-}
+                request.addParameter('NmSimulado', TYPES.NVarChar, nomeArquivo);
+                request.addParameter('RespA', TYPES.NVarChar, respostasA);
+                request.addParameter('RespB', TYPES.NVarChar, respostasB);
+                request.addParameter('RespC', TYPES.NVarChar, respostasC);
+                request.addParameter('RespD', TYPES.NVarChar, respostasD);
+                request.addParameter('RespE', TYPES.NVarChar, respostasE);
+                request.addParameter('RespCorreta', TYPES.NVarChar, "");
+                request.addParameter('Questao', TYPES.NVarChar, questao);
+                request.addParameter('Pergunta', TYPES.NVarChar, perguntas);
+                request.addParameter('Url', TYPES.NVarChar, urlImagem);
 
-    
+                request.on('row', function(columns){
+                    console.log('Valor: ' + columns[0].value);
+                });
+
+                Connection.execSql(request);
+
+                pool.on('error', function(err){
+                    console.error(err);
+                });
+            });
 });
 
