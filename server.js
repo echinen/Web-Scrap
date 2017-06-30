@@ -9,9 +9,9 @@ var TYPES = require('tedious').TYPES;
 var ConnectionPool = require('tedious-connection-pool');
 
 var config = {
-    userName: 'aprende',
-    password: 'Tutto123!',
-    server: 'aprendesrv.database.windows.net',
+    userName: '',
+    password: '',
+    server: '',
     options: { encrypt: true, database: 'aprendedb' }
 };
 
